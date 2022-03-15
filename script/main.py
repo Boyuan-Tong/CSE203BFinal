@@ -31,12 +31,8 @@ print("Data Load Finished")
 # Loading the confusion matrix
 confusionMatrix = loadConfusionMatrix()
 confusionMatrix = torch.tensor(confusionMatrix.astype(float))
-confusionMatrix = normalize(confusionMatrix)
 distanceMatrix = 1 - confusionMatrix
-confusionMatrix = normalize(confusionMatrix)
-distanceMatrix = makeSymmetric(distanceMatrix)
-
-rowFeatureVectors =  scipy.io.loadmat("../data/FVrow.mat")
+print(distanceMatrix)
 
 # Calculating the feature vector matrix according to average of images
 rowFeatureVectors = []
@@ -46,25 +42,30 @@ for i in range(TrainImgs.shape[0]):
 
 for i in range(10):
     rowFeatureVectors.append(np.mean(np.array(imgs[i]), axis=0))
-x, y = rowFeatureVectors[0], 0
-print ("This is an image of Number", y)
-pixels = x.reshape((28,28))
+x= rowFeatureVectors[5]
+pixels = x.reshape((28,28))/256
 plt.imshow(pixels,cmap="gray")
+plt.show()
 
-rowFeatureVectors = torch.tensor(rowFeatureVectors) # 10 * 784
+P = []
+for i in range(10):
+    for j in range(10):
+        P.append(np.abs(rowFeatureVectors[i] - rowFeatureVectors[j]))
+
+rowFeatureVectors = torch.tensor(P) # 100 * 784
 
 # Initializing the distance metric
 M = torch.rand(784, 784)
 
 # Setting the number of epochs
-num_epochs = 100
+num_epochs = 2
 M.requires_grad = True
 
 # Setting the ground truth variable as the confusion matrix
 groundTruth = distanceMatrix
 
 # Setting different optimizer to be used to optimize the parameters of the distance matrix
-optimizer_adam = optim.Adam([M], lr=0.0001, betas=(0.9, 0.999), weight_decay=0.00005)
+optimizer_adam = optim.Adam([M], lr=0.0001, weight_decay=0.00005)
 optimizer_sgd = optim.SGD([M], lr=0.0001)
 
 # Defining variables to store the logging values of during optimizing
@@ -74,6 +75,7 @@ best_estimate = 0
 
 for ep in range(num_epochs):
     output = torch.mm(torch.mm(rowFeatureVectors, M.double()), rowFeatureVectors.T)
+    output = torch.reshape(torch.diag(output), (10, 10))
     loss = MSELoss(output, groundTruth)
     loss.backward()
     optimizer_sgd.step()
@@ -93,11 +95,10 @@ print("The matrix which indicates the difference between the distance matrix and
 
 # knn = KNeighborsClassifier(n_neighbors=1)
 # knn.fit(TrainImgs, TrainLabs)
-# print("111111111")
 # print(knn.score(TestImgs, TestLabs))
 
-dist = lambda x, y: np.sqrt(np.transpose(x-y) @ M.detach().numpy() @ (x-y))
+dist = lambda x, y: np.transpose(x-y) @ M.detach().numpy() @ (x-y)
 knn2 = KNeighborsClassifier(n_neighbors=1, metric=dist)
-knn2.fit(TrainImgs, TrainLabs)
-print(knn2.score(TestImgs, TestLabs))
+knn2.fit(TrainImgs[:2000], TrainLabs[:2000])
+print(knn2.score(TestImgs[:100], TestLabs[:100]))
 
