@@ -42,9 +42,10 @@ for i in range(TrainImgs.shape[0]):
 
 for i in range(10):
     rowFeatureVectors.append(np.mean(np.array(imgs[i]), axis=0))
-x= rowFeatureVectors[5]
-pixels = x.reshape((28,28))/256
-plt.imshow(pixels,cmap="gray")
+    x = rowFeatureVectors[-1]
+    pixels = x.reshape((28,28))/256
+    plt.subplot(2, 5, i+1)
+    plt.imshow(pixels,cmap="gray")
 plt.show()
 
 P = []
