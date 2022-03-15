@@ -6,6 +6,7 @@ import scipy.io
 from helper import *
 import struct
 from sklearn.neighbors import KNeighborsClassifier
+import matplotlib.pyplot as plt
 
 # Loading MNIST dataset
 
@@ -30,8 +31,12 @@ print("Data Load Finished")
 # Loading the confusion matrix
 confusionMatrix = loadConfusionMatrix()
 confusionMatrix = torch.tensor(confusionMatrix.astype(float))
+confusionMatrix = normalize(confusionMatrix)
 distanceMatrix = 1 - confusionMatrix
+confusionMatrix = normalize(confusionMatrix)
 distanceMatrix = makeSymmetric(distanceMatrix)
+
+rowFeatureVectors =  scipy.io.loadmat("../data/FVrow.mat")
 
 # Calculating the feature vector matrix according to average of images
 rowFeatureVectors = []
@@ -41,13 +46,18 @@ for i in range(TrainImgs.shape[0]):
 
 for i in range(10):
     rowFeatureVectors.append(np.mean(np.array(imgs[i]), axis=0))
+x, y = rowFeatureVectors[0], 0
+print ("This is an image of Number", y)
+pixels = x.reshape((28,28))
+plt.imshow(pixels,cmap="gray")
+
 rowFeatureVectors = torch.tensor(rowFeatureVectors) # 10 * 784
 
 # Initializing the distance metric
 M = torch.rand(784, 784)
 
 # Setting the number of epochs
-num_epochs = 1000
+num_epochs = 100
 M.requires_grad = True
 
 # Setting the ground truth variable as the confusion matrix
@@ -81,12 +91,13 @@ print("The best loss is at ", best_epoch, "iteration and the best loss is: ", be
 print("The matrix which indicates the difference between the distance matrix and estimated distance matrix is:",
       (best_estimate - distanceMatrix).detach().numpy())
 
+# knn = KNeighborsClassifier(n_neighbors=1)
+# knn.fit(TrainImgs, TrainLabs)
+# print("111111111")
+# print(knn.score(TestImgs, TestLabs))
 
-knn = KNeighborsClassifier(n_neighbors=1)
-knn.fit(TrainImgs, TrainLabs)
-print(knn.score(TestImgs, TestLabs))
-
-knn2 = KNeighborsClassifier(n_neighbors=1, metric='mahalanobis', metric_params=M)
+dist = lambda x, y: np.sqrt(np.transpose(x-y) @ M.detach().numpy() @ (x-y))
+knn2 = KNeighborsClassifier(n_neighbors=1, metric=dist)
 knn2.fit(TrainImgs, TrainLabs)
 print(knn2.score(TestImgs, TestLabs))
 
